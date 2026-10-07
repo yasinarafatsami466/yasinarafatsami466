@@ -497,12 +497,13 @@ const svg = `<?xml version="1.0" encoding="UTF-8"?>
    WRITE FILE
 ========================= */
 
+fs.mkdirSync('dragon', { recursive: true });
+
 fs.writeFileSync(
-  'dragon.svg',
+  'dragon/dragon.svg',
   svg,
   'utf8'
 );
-
 console.log(
   `Dragon SVG generated successfully (${cols} weeks)`
 );
