@@ -35,13 +35,11 @@ I use GitHub to keep track of my projects, practice programming, and share what 
 
 ---
 
-## 📫 Connect With Me
+## 🤝 Connect with me
 
-- 💻 GitHub
-- 💼 LinkedIn
-- 📧 Email
-
----
+[![Facebook](https://img.shields.io/badge/Facebook-%231877F2.svg?logo=Facebook&logoColor=white)](https://www.facebook.com/share/18VWnfGyDn/?mibextid=wwXIfr)
+[![Instagram](https://img.shields.io/badge/Instagram-%23E4405F.svg?logo=Instagram&logoColor=white)](https://www.instagram.com/_yasin_arafat_1?stkn=d3ZobzZjOXl6enlu&utm_source=qr)
+[![Email](https://img.shields.io/badge/Email-D14836?logo=gmail&logoColor=white)](mailto:yasin0arafat0sami@gmail.com)
 
 ### 🌱 Learning today, building tomorrow.
 ## ⚡ GitHub Stats
