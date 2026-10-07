@@ -64,21 +64,23 @@ if (!weeks?.length) {
 const rows = 7;
 const cols = weeks.length;
 
-const cell = 14;
-const gap = 4;
+const cell = 12;
+const gap = 3;
 const step = cell + gap;
 
-const left = 42;
-const top = 32;
+const left = 36;
+const top = 30;
 
-const width = left + cols * step + 42;
-const height = top + rows * step + 34;
+const width =
+  left + cols * step + 36;
+
+const height =
+  top + rows * step + 30;
 
 /* =========================
    CONTRIBUTION CELLS
 ========================= */
 
-const points = [];
 const cells = [];
 
 for (let x = 0; x < cols; x++) {
@@ -86,23 +88,18 @@ for (let x = 0; x < cols; x++) {
   const days =
     weeks[x]?.contributionDays || [];
 
-  const order =
-    x % 2 === 0
-      ? [0, 1, 2, 3, 4, 5, 6]
-      : [6, 5, 4, 3, 2, 1, 0];
+  for (let y = 0; y < rows; y++) {
 
-  for (const y of order) {
+    const px =
+      left + x * step;
 
-    const px = left + x * step;
-    const py = top + y * step;
+    const py =
+      top + y * step;
 
     const count =
       days[y]?.contributionCount || 0;
 
-    points.push([
-      px + cell / 2,
-      py + cell / 2
-    ]);
+    /* Empty cell */
 
     cells.push(`
 <rect
@@ -110,10 +107,12 @@ for (let x = 0; x < cols; x++) {
   y="${py}"
   width="${cell}"
   height="${cell}"
-  rx="3"
+  rx="2.5"
   fill="#1f2937"
   opacity="0.18"
 />`);
+
+    /* Contribution cell */
 
     if (count > 0) {
 
@@ -129,7 +128,7 @@ for (let x = 0; x < cols; x++) {
   y="${py}"
   width="${cell}"
   height="${cell}"
-  rx="3"
+  rx="2.5"
   fill="#22c55e"
   opacity="${opacity.toFixed(2)}"
 />`);
@@ -138,243 +137,342 @@ for (let x = 0; x < cols; x++) {
 }
 
 /* =========================
-   SMOOTH PATH
+   DRAGON FLIGHT SETTINGS
 ========================= */
 
-function smoothPath(p) {
+/*
+   Dragon travels LEFT → RIGHT.
 
-  if (p.length < 2) {
-    return '';
-  }
+   The path has very small vertical
+   movements to make the flight
+   feel natural.
+*/
 
-  let d =
-    `M ${p[0][0]} ${p[0][1]}`;
+const flightY =
+  top + (rows * step) / 2;
 
-  for (
-    let i = 1;
-    i < p.length - 1;
-    i++
-  ) {
+const startX =
+  left - 65;
 
-    const mx =
-      (p[i][0] + p[i + 1][0]) / 2;
+const endX =
+  left + cols * step + 65;
 
-    const my =
-      (p[i][1] + p[i + 1][1]) / 2;
+const flightDistance =
+  endX - startX;
 
-    d +=
-      ` Q ${p[i][0]} ${p[i][1]} ${mx} ${my}`;
-  }
+/*
+   Flight speed.
 
-  const last =
-    p[p.length - 1];
-
-  d +=
-    ` Q ${last[0]} ${last[1]} ${last[0]} ${last[1]}`;
-
-  return d;
-}
-
-const path =
-  smoothPath(points);
-
-/* =========================
-   ANIMATION
-========================= */
+   Increase this number for slower
+   movement.
+*/
 
 const duration =
   Math.max(
-    30,
-    points.length * 0.105
+    18,
+    flightDistance * 0.055
   );
 
 /* =========================
    DRAGON
 ========================= */
 
-const dragon = [];
+/*
+   The entire dragon is ONE group.
 
-/* BODY */
+   This prevents the body from
+   breaking or bending during flight.
+*/
 
-for (
-  let i = 16;
-  i >= 0;
-  i--
-) {
+const dragon = `
+<g id="dragon">
 
-  const scale =
-    1 - i / 16;
+  <!-- =====================
+       TAIL
+  ====================== -->
 
-  const rx =
-    7.8 - scale * 2.0;
+  <g id="tail">
 
-  const ry =
-    4.8 - scale * 1.2;
+    <path
+      d="
+        M -9 0
+        C -16 1, -23 3, -29 1
+        C -34 -1, -39 -3, -45 0
+      "
+      fill="none"
+      stroke="#111827"
+      stroke-width="3.8"
+      stroke-linecap="round"
+    />
 
-  const delay =
-    i * 0.052;
+    <path
+      d="
+        M -39 0
+        L -47 -4
+        L -44 0
+        L -48 4
+        L -40 3
+        Z
+      "
+      fill="#111827"
+    />
 
-  dragon.push(`
-<g>
+    <!-- Small natural tail movement -->
 
-  <ellipse
-    cx="0"
-    cy="0"
-    rx="${rx.toFixed(1)}"
-    ry="${ry.toFixed(1)}"
-    fill="#111827"
-    stroke="#374151"
-    stroke-width="1"
-  />
+    <animateTransform
+      attributeName="transform"
+      type="rotate"
+      values="
+        0 0 0;
+        1.8 0 0;
+        0 0 0;
+        -1.8 0 0;
+        0 0 0
+      "
+      dur="1.4s"
+      repeatCount="indefinite"
+    />
 
-  <ellipse
-    cx="1"
-    cy="-1"
-    rx="${(rx * 0.58).toFixed(1)}"
-    ry="${(ry * 0.4).toFixed(1)}"
-    fill="#4b5563"
-    opacity="0.7"
-  />
+  </g>
 
-  <animateMotion
+  <!-- =====================
+       BODY
+  ====================== -->
+
+  <g id="body">
+
+    <ellipse
+      cx="0"
+      cy="0"
+      rx="8"
+      ry="4.6"
+      fill="#111827"
+      stroke="#374151"
+      stroke-width="0.8"
+    />
+
+    <ellipse
+      cx="1"
+      cy="-1"
+      rx="4.5"
+      ry="1.7"
+      fill="#4b5563"
+      opacity="0.65"
+    />
+
+    <!-- Very small body movement -->
+
+    <animateTransform
+      attributeName="transform"
+      type="translate"
+      values="
+        0 0;
+        0 -0.7;
+        0 0.5;
+        0 -0.5;
+        0 0
+      "
+      dur="1.4s"
+      repeatCount="indefinite"
+    />
+
+  </g>
+
+  <!-- =====================
+       TOP WING
+  ====================== -->
+
+  <g id="top-wing">
+
+    <path
+      d="
+        M -2 -1
+        C -7 -10, -14 -14, -21 -10
+        C -16 -9, -11 -5, -5 2
+        Z
+      "
+      fill="#374151"
+      stroke="#111827"
+      stroke-width="0.9"
+    />
+
+    <!-- Smooth wing flap -->
+
+    <animateTransform
+      attributeName="transform"
+      type="rotate"
+      values="
+        0 -3 0;
+        -12 -3 0;
+        0 -3 0;
+        8 -3 0;
+        0 -3 0
+      "
+      dur="1.15s"
+      repeatCount="indefinite"
+    />
+
+  </g>
+
+  <!-- =====================
+       LOWER WING
+  ====================== -->
+
+  <g id="bottom-wing">
+
+    <path
+      d="
+        M -3 1
+        C -8 9, -15 12, -21 8
+        C -15 8, -10 4, -5 -2
+        Z
+      "
+      fill="#374151"
+      stroke="#111827"
+      stroke-width="0.9"
+    />
+
+    <!-- Smooth opposite flap -->
+
+    <animateTransform
+      attributeName="transform"
+      type="rotate"
+      values="
+        0 -3 1;
+        10 -3 1;
+        0 -3 1;
+        -8 -3 1;
+        0 -3 1
+      "
+      dur="1.15s"
+      repeatCount="indefinite"
+    />
+
+  </g>
+
+  <!-- =====================
+       HEAD
+  ====================== -->
+
+  <g id="head">
+
+    <!-- Head -->
+
+    <path
+      d="
+        M 5 0
+        C 9 -3.5, 15 -3.5, 19 0
+        C 15 3.5, 9 3.5, 5 0
+        Z
+      "
+      fill="#111827"
+      stroke="#374151"
+      stroke-width="0.8"
+    />
+
+    <!-- Snout -->
+
+    <path
+      d="
+        M 15 -2
+        L 24 0
+        L 15 2
+        Z
+      "
+      fill="#111827"
+    />
+
+    <!-- Horn -->
+
+    <path
+      d="
+        M 8 -3
+        L 10 -8
+        L 13 -3
+        Z
+      "
+      fill="#374151"
+    />
+
+    <path
+      d="
+        M 5 -2
+        L 3 -7
+        L 9 -3
+        Z
+      "
+      fill="#374151"
+    />
+
+    <!-- Eye -->
+
+    <circle
+      cx="16"
+      cy="-1.2"
+      r="1"
+      fill="#facc15"
+    />
+
+    <circle
+      cx="16.2"
+      cy="-1.2"
+      r="0.35"
+      fill="#111827"
+    />
+
+  </g>
+
+  <!-- =====================
+       WHOLE DRAGON FLIGHT
+  ====================== -->
+
+  <!--
+       Small floating motion:
+       LEFT → RIGHT
+
+       Only the position changes.
+       The dragon itself does NOT rotate.
+  -->
+
+  <animateTransform
+    attributeName="transform"
+    type="translate"
+
+    values="
+      ${startX} ${flightY};
+      ${startX + flightDistance * 0.20} ${flightY - 2};
+      ${startX + flightDistance * 0.40} ${flightY + 1.5};
+      ${startX + flightDistance * 0.60} ${flightY - 1.5};
+      ${startX + flightDistance * 0.80} ${flightY + 1};
+      ${endX} ${flightY}
+    "
+
     dur="${duration.toFixed(2)}s"
-    begin="-${delay.toFixed(3)}s"
+
     repeatCount="indefinite"
-    rotate="auto"
-    calcMode="paced"
-    path="${path}"
+
+    calcMode="spline"
+
+    keySplines="
+      0.42 0 0.58 1;
+      0.42 0 0.58 1;
+      0.42 0 0.58 1;
+      0.42 0 0.58 1;
+      0.42 0 0.58 1
+    "
+
+    keyTimes="
+      0;
+      0.20;
+      0.40;
+      0.60;
+      0.80;
+      1
+    "
   />
 
-</g>`);
-}
-
-/* WINGS */
-
-dragon.push(`
-<g>
-
-  <path
-    d="M0 0
-       C-10 -13 -21 -13 -27 -5
-       C-18 -7 -10 -3 -4 4 Z"
-    fill="#374151"
-    stroke="#111827"
-    stroke-width="1.2"
-  />
-
-  <path
-    d="M-3 2
-       C-13 13 -22 12 -27 6
-       C-18 8 -10 4 -4 -3 Z"
-    fill="#374151"
-    stroke="#111827"
-    stroke-width="1.2"
-  />
-
-  <animateMotion
-    dur="${duration.toFixed(2)}s"
-    begin="-0.45s"
-    repeatCount="indefinite"
-    rotate="auto"
-    calcMode="paced"
-    path="${path}"
-  />
-
-</g>`);
-
-/* TAIL */
-
-dragon.push(`
-<g>
-
-  <path
-    d="M2 0
-       C-9 1 -17 5 -25 2
-       C-32 -1 -38 -4 -45 0"
-    fill="none"
-    stroke="#111827"
-    stroke-width="5.8"
-    stroke-linecap="round"
-  />
-
-  <path
-    d="M-40 0
-       L-49 -6
-       L-46 0
-       L-51 6
-       L-42 4 Z"
-    fill="#111827"
-  />
-
-  <animateMotion
-    dur="${duration.toFixed(2)}s"
-    begin="-1.05s"
-    repeatCount="indefinite"
-    rotate="auto"
-    calcMode="paced"
-    path="${path}"
-  />
-
-</g>`);
-
-/* HEAD */
-
-dragon.push(`
-<g>
-
-  <path
-    d="M0 0
-       C6 -5 14 -5 20 0
-       C14 5 6 5 0 0 Z"
-    fill="#111827"
-    stroke="#374151"
-    stroke-width="1.2"
-  />
-
-  <path
-    d="M15 -3
-       L27 0
-       L15 3 Z"
-    fill="#111827"
-  />
-
-  <path
-    d="M7 -4
-       L11 -11
-       L14 -4 Z"
-    fill="#374151"
-  />
-
-  <path
-    d="M3 -3
-       L0 -9
-       L8 -4 Z"
-    fill="#374151"
-  />
-
-  <circle
-    cx="17"
-    cy="-1.5"
-    r="1.35"
-    fill="#facc15"
-  />
-
-  <circle
-    cx="17.3"
-    cy="-1.5"
-    r="0.5"
-    fill="#111827"
-  />
-
-  <animateMotion
-    dur="${duration.toFixed(2)}s"
-    repeatCount="indefinite"
-    rotate="auto"
-    calcMode="paced"
-    path="${path}"
-  />
-
-</g>`);
+</g>
+`;
 
 /* =========================
    FINAL SVG
@@ -389,11 +487,15 @@ const svg = `<?xml version="1.0" encoding="UTF-8"?>
   viewBox="0 0 ${width} ${height}"
 >
 
-${cells.join('\n')}
+  ${cells.join('\n')}
 
-${dragon.join('\n')}
+  ${dragon}
 
 </svg>`;
+
+/* =========================
+   WRITE FILE
+========================= */
 
 fs.writeFileSync(
   'dragon.svg',
@@ -402,5 +504,5 @@ fs.writeFileSync(
 );
 
 console.log(
-  `Dragon SVG generated successfully (${points.length} points)`
+  `Dragon SVG generated successfully (${cols} weeks)`
 );
