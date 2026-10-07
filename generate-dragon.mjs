@@ -4,37 +4,33 @@
 const dragon = `
 <g id="dragon">
 
-  <!-- Long Serpentine Body -->
+  <!-- Long snake-like body -->
   <path
-    d="M-10 5
-       C-20 -3 -28 12 -38 4
-       C-48 -4 -55 12 -66 5
-       C-77 -2 -84 10 -94 4
-       C-104 -2 -110 8 -119 3"
+    d="M-5 5
+       C-18 -4 -28 12 -40 4
+       C-52 -5 -62 12 -74 4
+       C-86 -4 -96 10 -108 3"
     fill="none"
     stroke="#3f4f2f"
-    stroke-width="11"
+    stroke-width="10"
     stroke-linecap="round"
   />
 
-  <!-- Natural lighter belly -->
+  <!-- Belly -->
   <path
-    d="M-12 5
-       C-22 0 -29 9 -38 4
-       C-48 0 -55 9 -66 5
-       C-77 1 -84 8 -94 4
-       C-104 1 -110 7 -119 3"
+    d="M-7 5
+       C-18 0 -28 9 -40 4
+       C-52 0 -62 9 -74 4
+       C-86 1 -96 8 -108 3"
     fill="none"
     stroke="#71804b"
-    stroke-width="4"
+    stroke-width="3"
     stroke-linecap="round"
   />
 
   <!-- Neck -->
   <path
-    d="M0 5
-       C3 -3 7 -10 13 -14
-       C18 -17 23 -16 27 -12"
+    d="M0 5 C3 -5 8 -12 15 -16"
     fill="none"
     stroke="#3f4f2f"
     stroke-width="9"
@@ -43,25 +39,21 @@ const dragon = `
 
   <!-- Dragon Head -->
   <path
-    d="M12 -18
-       C16 -26 26 -30 36 -26
-       L48 -20
-       L58 -15
-       L47 -9
-       L34 -8
-       C24 -8 16 -11 12 -18 Z"
+    d="M12 -17
+       C16 -25 25 -29 34 -25
+       L45 -20
+       L55 -14
+       L45 -8
+       L32 -8
+       C22 -9 15 -12 12 -17 Z"
     fill="#3f4f2f"
     stroke="#26351f"
     stroke-width="1.5"
   />
 
-  <!-- Dragon Jaw -->
+  <!-- Jaw -->
   <path
-    d="M31 -9
-       L54 -13
-       L45 -5
-       L29 -5
-       Z"
+    d="M30 -9 L52 -13 L43 -5 L28 -5 Z"
     fill="#52643a"
     stroke="#26351f"
     stroke-width="1"
@@ -69,12 +61,12 @@ const dragon = `
 
   <!-- Eye -->
   <path
-    d="M25 -20 Q31 -24 35 -20 Q31 -16 25 -18 Z"
-    fill="#171b12"
+    d="M24 -20 Q29 -23 34 -20 Q29 -16 24 -18 Z"
+    fill="#151a10"
   />
 
   <path
-    d="M28 -20 L33 -20"
+    d="M27 -20 L32 -20"
     stroke="#d6a928"
     stroke-width="2"
     stroke-linecap="round"
@@ -82,42 +74,30 @@ const dragon = `
 
   <!-- Horns -->
   <path
-    d="M20 -24 L14 -35 L24 -27 Z"
+    d="M19 -23 L14 -34 L23 -26 Z"
     fill="#b7aa82"
-    stroke="#70654b"
-    stroke-width="1"
   />
 
   <path
-    d="M30 -27 L30 -38 L36 -27 Z"
+    d="M29 -25 L29 -36 L35 -26 Z"
     fill="#b7aa82"
-    stroke="#70654b"
-    stroke-width="1"
-  />
-
-  <!-- Nose -->
-  <circle
-    cx="49"
-    cy="-17"
-    r="1.4"
-    fill="#171b12"
   />
 
   <!-- Teeth -->
   <path
-    d="M40 -9 L42 -4 L45 -9 L48 -5"
+    d="M38 -9 L40 -4 L43 -9 L46 -5"
     fill="#eee9d8"
   />
 
   <!-- Wing -->
   <path
-    d="M7 -13
-       L-5 -34
-       L4 -28
-       L0 -42
-       L10 -31
-       L18 -36
-       L17 -16 Z"
+    d="M5 -13
+       L-6 -33
+       L3 -27
+       L0 -41
+       L10 -30
+       L17 -35
+       L16 -16 Z"
     fill="#34452a"
     stroke="#202b1a"
     stroke-width="1.5"
@@ -125,36 +105,26 @@ const dragon = `
 
   <!-- Back spikes -->
   <path
-    d="M-5 0 L-10 -10 L-2 -5
-       M-20 1 L-25 -9 L-17 -4
-       M-35 1 L-40 -8 L-32 -3
+    d="M-5 0 L-10 -9 L-2 -4
+       M-20 1 L-25 -8 L-17 -3
+       M-35 2 L-40 -7 L-32 -2
        M-50 3 L-55 -6 L-47 0"
     fill="#596b3b"
-    stroke="#26351f"
-    stroke-width="1"
   />
 
-  <!-- Tail tip -->
+  <!-- Tail -->
   <path
-    d="M-113 3 L-126 -3 L-120 8 Z"
+    d="M-100 3 L-117 -3 L-108 8 Z"
     fill="#52643a"
   />
 
-  <!-- Fire Breath -->
+  <!-- Fire breath -->
   <path
-    d="M55 -16
-       C64 -20 68 -15 75 -18
-       C70 -11 65 -9 57 -11"
+    d="M53 -14
+       C62 -18 67 -13 74 -16
+       C69 -9 63 -8 55 -10"
     fill="#d97706"
     stroke="#f59e0b"
-    stroke-width="1.5"
-  />
-
-  <path
-    d="M60 -14
-       C66 -14 69 -11 73 -13"
-    fill="none"
-    stroke="#facc15"
     stroke-width="1.5"
   />
 
