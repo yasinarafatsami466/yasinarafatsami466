@@ -79,5 +79,5 @@ I use GitHub to keep track of my projects, practice programming, and share what 
 ## 📊 Contribution Graph
 
 <p align="center">
-  <img src="https://github-readme-activity-graph.vercel.app/graph?username=yasinarafatsami466&theme=tokyo-night&hide_border=true" width="95%"/>
+  <img src="https://github-readme-activity-graph.vercel.app/graph?username=yasinarafatsami466&theme=tokyo-night&hide_border=true&area=true" width="100%"/>
 </p>
