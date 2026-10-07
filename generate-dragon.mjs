@@ -1,40 +1,165 @@
-import fs from "node:fs";
+/*
+ * 🐉 Serpentine Natural Dragon
+ */
+const dragon = `
+<g id="dragon">
 
-const username = process.env.GITHUB_USERNAME || process.argv[2];
-const token = process.env.GITHUB_TOKEN;
+  <!-- Long Serpentine Body -->
+  <path
+    d="M-10 5
+       C-20 -3 -28 12 -38 4
+       C-48 -4 -55 12 -66 5
+       C-77 -2 -84 10 -94 4
+       C-104 -2 -110 8 -119 3"
+    fill="none"
+    stroke="#3f4f2f"
+    stroke-width="11"
+    stroke-linecap="round"
+  />
 
-if (!username || !token) {
-  throw new Error("GITHUB_USERNAME and GITHUB_TOKEN are required.");
-}
+  <!-- Natural lighter belly -->
+  <path
+    d="M-12 5
+       C-22 0 -29 9 -38 4
+       C-48 0 -55 9 -66 5
+       C-77 1 -84 8 -94 4
+       C-104 1 -110 7 -119 3"
+    fill="none"
+    stroke="#71804b"
+    stroke-width="4"
+    stroke-linecap="round"
+  />
 
-const query = `
-query($login:String!) {
-  user(login:$login) {
-    contributionsCollection {
-      contributionCalendar {
-        totalContributions
-        weeks {
-          contributionDays {
-            contributionCount
-            date
-            contributionLevel
-          }
-        }
-      }
-    }
-  }
-}`;
+  <!-- Neck -->
+  <path
+    d="M0 5
+       C3 -3 7 -10 13 -14
+       C18 -17 23 -16 27 -12"
+    fill="none"
+    stroke="#3f4f2f"
+    stroke-width="9"
+    stroke-linecap="round"
+  />
 
-const response = await fetch("https://api.github.com/graphql", {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-    "User-Agent": "dragon-contribution-graph"
-  },
-  body: JSON.stringify({
-    query,
-    variables: {
+  <!-- Dragon Head -->
+  <path
+    d="M12 -18
+       C16 -26 26 -30 36 -26
+       L48 -20
+       L58 -15
+       L47 -9
+       L34 -8
+       C24 -8 16 -11 12 -18 Z"
+    fill="#3f4f2f"
+    stroke="#26351f"
+    stroke-width="1.5"
+  />
+
+  <!-- Dragon Jaw -->
+  <path
+    d="M31 -9
+       L54 -13
+       L45 -5
+       L29 -5
+       Z"
+    fill="#52643a"
+    stroke="#26351f"
+    stroke-width="1"
+  />
+
+  <!-- Eye -->
+  <path
+    d="M25 -20 Q31 -24 35 -20 Q31 -16 25 -18 Z"
+    fill="#171b12"
+  />
+
+  <path
+    d="M28 -20 L33 -20"
+    stroke="#d6a928"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+
+  <!-- Horns -->
+  <path
+    d="M20 -24 L14 -35 L24 -27 Z"
+    fill="#b7aa82"
+    stroke="#70654b"
+    stroke-width="1"
+  />
+
+  <path
+    d="M30 -27 L30 -38 L36 -27 Z"
+    fill="#b7aa82"
+    stroke="#70654b"
+    stroke-width="1"
+  />
+
+  <!-- Nose -->
+  <circle
+    cx="49"
+    cy="-17"
+    r="1.4"
+    fill="#171b12"
+  />
+
+  <!-- Teeth -->
+  <path
+    d="M40 -9 L42 -4 L45 -9 L48 -5"
+    fill="#eee9d8"
+  />
+
+  <!-- Wing -->
+  <path
+    d="M7 -13
+       L-5 -34
+       L4 -28
+       L0 -42
+       L10 -31
+       L18 -36
+       L17 -16 Z"
+    fill="#34452a"
+    stroke="#202b1a"
+    stroke-width="1.5"
+  />
+
+  <!-- Back spikes -->
+  <path
+    d="M-5 0 L-10 -10 L-2 -5
+       M-20 1 L-25 -9 L-17 -4
+       M-35 1 L-40 -8 L-32 -3
+       M-50 3 L-55 -6 L-47 0"
+    fill="#596b3b"
+    stroke="#26351f"
+    stroke-width="1"
+  />
+
+  <!-- Tail tip -->
+  <path
+    d="M-113 3 L-126 -3 L-120 8 Z"
+    fill="#52643a"
+  />
+
+  <!-- Fire Breath -->
+  <path
+    d="M55 -16
+       C64 -20 68 -15 75 -18
+       C70 -11 65 -9 57 -11"
+    fill="#d97706"
+    stroke="#f59e0b"
+    stroke-width="1.5"
+  />
+
+  <path
+    d="M60 -14
+       C66 -14 69 -11 73 -13"
+    fill="none"
+    stroke="#facc15"
+    stroke-width="1.5"
+  />
+
+</g>
+`;    variables: {
       login: username
     }
   })
