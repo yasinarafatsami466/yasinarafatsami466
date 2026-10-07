@@ -130,121 +130,6 @@ const animationDuration = Math.max(
 
 
 /* =========================================================
-   CALCULATE DISTANCES
-========================================================= */
-
-let totalDistance = 0;
-
-const distances = [0];
-
-for (let i = 1; i < contributions.length; i++) {
-  const a = contributions[i - 1];
-  const b = contributions[i];
-
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-
-  const distance = Math.sqrt(
-    dx * dx + dy * dy
-  );
-
-  totalDistance += distance;
-  distances.push(totalDistance);
-}
-
-
-/* =========================================================
-   NORMALIZED ARRIVAL TIMES
-
-   IMPORTANT:
-   These times are synchronized with the dragon path.
-   The cell stays visible until the dragon reaches it.
-========================================================= */
-
-const times = contributions.map((_, i) => {
-
-  if (totalDistance === 0) {
-    return 0;
-  }
-
-  return distances[i] / totalDistance;
-
-});
-
-
-/* =========================================================
-   GRAPH CELLS
-========================================================= */
-
-const cells = [];
-
-let index = 0;
-
-for (let x = 0; x < cols; x++) {
-
-  const days = weeks[x]?.contributionDays || [];
-
-  for (let y = 0; y < rows; y++) {
-
-    const count =
-      days[y]?.contributionCount || 0;
-
-    const px = left + x * step;
-    const py = top + y * step;
-
-    if (count === 0) {
-
-      cells.push(
-        `<rect x="${px}" y="${py}" width="${cell}" height="${cell}" rx="2.5" fill="#161b22" stroke="#30363d" stroke-width=".4"/>`
-      );
-
-      continue;
-    }
-
-    const t = times[index];
-
-    /*
-      Keep the cell visible until the dragon reaches it.
-
-      A tiny delay after arrival makes sure the dragon
-      visibly visits the cell before it disappears.
-    */
-
-    const hideStart = Math.min(
-      0.99999,
-      t + 0.012
-    );
-
-    const fadeStart = Math.max(
-      0,
-      hideStart - 0.006
-    );
-
-    const color = getColor(count);
-
-    cells.push(`
-<rect
-id="c${index}"
-x="${px}"
-y="${py}"
-width="${cell}"
-height="${cell}"
-rx="2.5"
-fill="${color}">
-<animate
-attributeName="opacity"
-values="1;1;1;0;0;1"
-keyTimes="0;${t.toFixed(5)};${fadeStart.toFixed(5)};${hideStart.toFixed(5)};0.99999;1"
-dur="${animationDuration}s"
-repeatCount="indefinite"/>
-</rect>`);
-
-    index++;
-  }
-}
-
-
-/* =========================================================
    DRAGON FLIGHT POINTS
 ========================================================= */
 
@@ -305,6 +190,145 @@ if (contributions.length > 0) {
       y: top + 30
     }
   );
+}
+
+
+/* =========================================================
+   EXACT FLIGHT PATH DISTANCES
+
+   IMPORTANT:
+   animateMotion uses the actual geometric length
+   of flightPath because calcMode="paced".
+
+   Therefore contribution timing MUST be calculated
+   from flightPoints, not from contributions alone.
+========================================================= */
+
+let totalFlightDistance = 0;
+
+const flightDistances = [0];
+
+for (let i = 1; i < flightPoints.length; i++) {
+
+  const a = flightPoints[i - 1];
+  const b = flightPoints[i];
+
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+
+  const distance = Math.sqrt(
+    dx * dx + dy * dy
+  );
+
+  totalFlightDistance += distance;
+
+  flightDistances.push(
+    totalFlightDistance
+  );
+}
+
+
+/* =========================================================
+   EXACT CONTRIBUTION ARRIVAL TIMES
+
+   flightPoints:
+   0 = outside start
+   1 = contribution 0
+   2 = contribution 1
+   3 = contribution 2
+   ...
+
+   These values now match animateMotion's paced timing.
+========================================================= */
+
+const times = contributions.map((_, i) => {
+
+  const flightIndex = i + 1;
+
+  if (totalFlightDistance === 0) {
+    return 0;
+  }
+
+  return (
+    flightDistances[flightIndex] /
+    totalFlightDistance
+  );
+
+});
+
+
+/* =========================================================
+   GRAPH CELLS
+========================================================= */
+
+const cells = [];
+
+let index = 0;
+
+for (let x = 0; x < cols; x++) {
+
+  const days = weeks[x]?.contributionDays || [];
+
+  for (let y = 0; y < rows; y++) {
+
+    const count =
+      days[y]?.contributionCount || 0;
+
+    const px = left + x * step;
+    const py = top + y * step;
+
+    if (count === 0) {
+
+      cells.push(
+        `<rect x="${px}" y="${py}" width="${cell}" height="${cell}" rx="2.5" fill="#161b22" stroke="#30363d" stroke-width=".4"/>`
+      );
+
+      continue;
+    }
+
+    const t = times[index];
+
+    /*
+      Dragon reaches the contribution exactly at t.
+
+      The cell remains fully visible until the dragon
+      reaches it, then fades out immediately after.
+
+      This prevents the cell from disappearing before
+      the dragon visits it.
+    */
+
+    const fadeStart = Math.min(
+      0.99998,
+      t + 0.002
+    );
+
+    const hideStart = Math.min(
+      0.99999,
+      t + 0.010
+    );
+
+    const color = getColor(count);
+
+    cells.push(`
+<rect
+id="c${index}"
+x="${px}"
+y="${py}"
+width="${cell}"
+height="${cell}"
+rx="2.5"
+fill="${color}">
+<animate
+attributeName="opacity"
+values="1;1;1;0;0;1"
+keyTimes="0;${t.toFixed(5)};${fadeStart.toFixed(5)};${hideStart.toFixed(5)};0.99999;1"
+dur="${animationDuration}s"
+repeatCount="indefinite"/>
+</rect>`);
+
+    index++;
+  }
 }
 
 
