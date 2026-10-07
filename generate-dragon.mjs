@@ -1,10 +1,10 @@
-import fs from "node:fs";
+import fs from "fs";
 
-const username = process.env.GITHUB_USERNAME || process.argv[2];
+const username = process.env.GITHUB_USERNAME;
 const token = process.env.GITHUB_TOKEN;
 
 if (!username || !token) {
-  throw new Error("GITHUB_USERNAME and GITHUB_TOKEN are required.");
+  throw new Error("Missing GITHUB_USERNAME or GITHUB_TOKEN");
 }
 
 const query = `
@@ -12,12 +12,9 @@ query($login:String!) {
   user(login:$login) {
     contributionsCollection {
       contributionCalendar {
-        totalContributions
         weeks {
           contributionDays {
             contributionCount
-            date
-            contributionLevel
           }
         }
       }
@@ -28,13 +25,468 @@ query($login:String!) {
 const response = await fetch("https://api.github.com/graphql", {
   method: "POST",
   headers: {
-    Authorization: `Bearer ${token}`,
+    Authorization: `bearer ${token}`,
     "Content-Type": "application/json",
-    "User-Agent": "dragon-contribution-graph"
+    "User-Agent": "dragon-contribution-generator"
   },
   body: JSON.stringify({
     query,
     variables: {
+      login: username
+    }
+  })
+});
+
+if (!response.ok) {
+  throw new Error(
+    `GitHub API error: ${response.status} ${response.statusText}`
+  );
+}
+
+const data = await response.json();
+
+if (data.errors) {
+  throw new Error(
+    data.errors.map((error) => error.message).join("; ")
+  );
+}
+
+const weeks =
+  data?.data?.user?.contributionsCollection?.contributionCalendar?.weeks;
+
+if (!weeks?.length) {
+  throw new Error("No contribution calendar data returned");
+}
+
+/* =========================
+   GRAPH SETTINGS
+========================= */
+
+const rows = 7;
+const cols = weeks.length;
+
+const cell = 14;
+const gap = 4;
+const step = cell + gap;
+
+const left = 46;
+const top = 36;
+
+const right = left + (cols - 1) * step + cell;
+const bottom = top + (rows - 1) * step + cell;
+
+const width = right + 46;
+const height = bottom + 42;
+
+/* =========================
+   CONTRIBUTION POINTS
+========================= */
+
+const points = [];
+const rects = [];
+
+for (let x = 0; x < cols; x++) {
+  const days = weeks[x]?.contributionDays ?? [];
+
+  const ys =
+    x % 2 === 0
+      ? [...Array(rows).keys()]
+      : [...Array(rows).keys()].reverse();
+
+  for (const y of ys) {
+    const count = days[y]?.contributionCount ?? 0;
+
+    const px = left + x * step;
+    const py = top + y * step;
+
+    /* Background contribution square */
+    rects.push(`
+      <rect
+        x="${px}"
+        y="${py}"
+        width="${cell}"
+        height="${cell}"
+        rx="3"
+        fill="url(#cellGradient)"
+        opacity="0.16"
+      >
+        <animate
+          attributeName="opacity"
+          values="0.16;0.38;0.16"
+          dur="3.8s"
+          begin="${((x * rows + y) % 19) * 0.08}s"
+          repeatCount="indefinite"
+        />
+      </rect>
+    `);
+
+    /* Actual contribution */
+    if (count > 0) {
+      const opacity = Math.min(
+        0.35 + count * 0.045,
+        0.95
+      );
+
+      rects.push(`
+        <rect
+          x="${px}"
+          y="${py}"
+          width="${cell}"
+          height="${cell}"
+          rx="3"
+          fill="url(#contributionGradient)"
+          opacity="${opacity.toFixed(2)}"
+        />
+      `);
+    }
+
+    points.push([
+      px + cell / 2,
+      py + cell / 2
+    ]);
+  }
+}
+
+/* =========================
+   SMOOTH DRAGON PATH
+========================= */
+
+function createSmoothPath(input) {
+  if (input.length < 2) {
+    return "";
+  }
+
+  const midpoint = (a, b) => [
+    (a[0] + b[0]) / 2,
+    (a[1] + b[1]) / 2
+  ];
+
+  let d =
+    `M ${input[0][0].toFixed(2)} ` +
+    `${input[0][1].toFixed(2)}`;
+
+  for (let i = 1; i < input.length - 1; i++) {
+    const nextMid = midpoint(
+      input[i],
+      input[i + 1]
+    );
+
+    d +=
+      ` Q ${input[i][0].toFixed(2)} ` +
+      `${input[i][1].toFixed(2)} ` +
+      `${nextMid[0].toFixed(2)} ` +
+      `${nextMid[1].toFixed(2)}`;
+  }
+
+  const last = input[input.length - 1];
+
+  d +=
+    ` Q ${last[0].toFixed(2)} ` +
+    `${last[1].toFixed(2)} ` +
+    `${last[0].toFixed(2)} ` +
+    `${last[1].toFixed(2)}`;
+
+  return d;
+}
+
+const motionPath = createSmoothPath(points);
+
+/* =========================
+   ANIMATION SPEED
+========================= */
+
+const duration = Math.max(
+  32,
+  points.length * 0.105
+);
+
+/* =========================
+   DRAGON
+========================= */
+
+const dragonParts = [];
+
+/* =========================
+   BODY
+========================= */
+
+const bodySegments = 17;
+const segmentDelay = 0.052;
+
+for (
+  let i = bodySegments - 1;
+  i >= 0;
+  i--
+) {
+  const t =
+    i / (bodySegments - 1);
+
+  const rx =
+    8.1 - t * 2.0;
+
+  const ry =
+    4.9 - t * 1.3;
+
+  const delay =
+    i * segmentDelay;
+
+  dragonParts.push(`
+    <g
+      opacity="${(
+        0.98 - t * 0.10
+      ).toFixed(2)}"
+    >
+
+      <ellipse
+        cx="0"
+        cy="0"
+        rx="${rx.toFixed(1)}"
+        ry="${ry.toFixed(1)}"
+        fill="#111827"
+        stroke="#374151"
+        stroke-width="1.1"
+      />
+
+      <ellipse
+        cx="1.2"
+        cy="-0.9"
+        rx="${(rx * 0.63).toFixed(1)}"
+        ry="${(ry * 0.42).toFixed(1)}"
+        fill="#374151"
+        opacity="0.75"
+      />
+
+      <animateMotion
+        dur="${duration.toFixed(2)}s"
+        begin="-${delay.toFixed(3)}s"
+        repeatCount="indefinite"
+        rotate="auto"
+        calcMode="paced"
+        path="${motionPath}"
+      />
+
+    </g>
+  `);
+}
+
+/* =========================
+   WINGS
+========================= */
+
+dragonParts.push(`
+  <g>
+
+    <path
+      d="M-2,-3
+         C-13,-15 -24,-13 -28,-6
+         C-19,-8 -12,-3 -5,4 Z"
+      fill="#4b5563"
+      stroke="#111827"
+      stroke-width="1.4"
+    />
+
+    <path
+      d="M-4,3
+         C-15,13 -23,13 -27,7
+         C-18,8 -12,4 -5,-2 Z"
+      fill="#374151"
+      stroke="#111827"
+      stroke-width="1.4"
+    />
+
+    <animateMotion
+      dur="${duration.toFixed(2)}s"
+      begin="-${(
+        bodySegments *
+        segmentDelay *
+        0.55
+      ).toFixed(3)}s"
+      repeatCount="indefinite"
+      rotate="auto"
+      calcMode="paced"
+      path="${motionPath}"
+    />
+
+  </g>
+`);
+
+/* =========================
+   TAIL
+========================= */
+
+dragonParts.push(`
+  <g>
+
+    <path
+      d="M2,0
+         C-8,2 -16,6 -25,2
+         C-32,-1 -38,-5 -44,-1"
+      fill="none"
+      stroke="#111827"
+      stroke-width="6.2"
+      stroke-linecap="round"
+    />
+
+    <path
+      d="M-38,-1
+         L-47,-7
+         L-44,1
+         L-51,5
+         L-42,5 Z"
+      fill="#111827"
+    />
+
+    <animateMotion
+      dur="${duration.toFixed(2)}s"
+      begin="-${(
+        (bodySegments + 2) *
+        segmentDelay
+      ).toFixed(3)}s"
+      repeatCount="indefinite"
+      rotate="auto"
+      calcMode="paced"
+      path="${motionPath}"
+    />
+
+  </g>
+`);
+
+/* =========================
+   HEAD
+========================= */
+
+dragonParts.push(`
+  <g>
+
+    <!-- Main head -->
+    <path
+      d="M0,0
+         C6,-5 14,-5 20,0
+         C14,5 6,5 0,0 Z"
+      fill="#111827"
+      stroke="#374151"
+      stroke-width="1.3"
+    />
+
+    <!-- Snout -->
+    <path
+      d="M15,-3
+         L27,0
+         L15,3 Z"
+      fill="#111827"
+    />
+
+    <!-- Horn -->
+    <path
+      d="M8,-4
+         L12,-12
+         L15,-4 Z"
+      fill="#374151"
+    />
+
+    <!-- Back horn -->
+    <path
+      d="M3,-3
+         L0,-10
+         L8,-4 Z"
+      fill="#374151"
+    />
+
+    <!-- Eye -->
+    <circle
+      cx="17"
+      cy="-1.5"
+      r="1.4"
+      fill="#facc15"
+    />
+
+    <circle
+      cx="17.3"
+      cy="-1.5"
+      r="0.55"
+      fill="#111827"
+    />
+
+    <animateMotion
+      dur="${duration.toFixed(2)}s"
+      repeatCount="indefinite"
+      rotate="auto"
+      calcMode="paced"
+      path="${motionPath}"
+    />
+
+  </g>
+`);
+
+/* =========================
+   FINAL SVG
+========================= */
+
+const svg = `<?xml version="1.0" encoding="UTF-8"?>
+
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="${width}"
+  height="${height}"
+  viewBox="0 0 ${width} ${height}"
+>
+
+  <defs>
+
+    <linearGradient
+      id="cellGradient"
+      x1="0"
+      y1="0"
+      x2="1"
+      y2="1"
+    >
+      <stop
+        offset="0%"
+        stop-color="#1f2937"
+      />
+
+      <stop
+        offset="100%"
+        stop-color="#111827"
+      />
+    </linearGradient>
+
+    <linearGradient
+      id="contributionGradient"
+      x1="0"
+      y1="0"
+      x2="1"
+      y2="1"
+    >
+      <stop
+        offset="0%"
+        stop-color="#22c55e"
+      />
+
+      <stop
+        offset="100%"
+        stop-color="#16a34a"
+      />
+    </linearGradient>
+
+  </defs>
+
+  ${rects.join("\n")}
+
+  ${dragonParts.join("\n")}
+
+</svg>
+`;
+
+fs.writeFileSync(
+  "dragon.svg",
+  svg,
+  "utf8"
+);
+
+console.log(
+  `Dragon SVG generated successfully: ${points.length} path points`
+);    variables: {
       login: username
     }
   })
