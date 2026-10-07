@@ -18,27 +18,6 @@
 
 ---
 
-## 🚀 Projects
-
-### 🚍 Route Vision
-
-A university transport management and tracking system designed to help users find buses, routes, schedules, and other transport information.
-
-**Technologies:** Java, OOP, MySQL, GPS / Location Services
-
-### 📚 Class Management System
-
-A Java-based project for managing class-related information while practicing object-oriented programming concepts.
-
-**Technologies:** Java, OOP
-
-### 🎮 Hangman Game
-
-A simple word-guessing game where players try to guess a hidden word within a limited number of attempts.
-
-**Technologies:** C / C++
-
----
 
 ## 📖 Currently Learning
 
