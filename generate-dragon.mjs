@@ -155,12 +155,20 @@ for (let i = 1; i < contributions.length; i++) {
 
 /* =========================================================
    NORMALIZED ARRIVAL TIMES
+
+   IMPORTANT:
+   These times are synchronized with the dragon path.
+   The cell stays visible until the dragon reaches it.
 ========================================================= */
 
 const times = contributions.map((_, i) => {
-  if (totalDistance === 0) return 0;
+
+  if (totalDistance === 0) {
+    return 0;
+  }
 
   return distances[i] / totalDistance;
+
 });
 
 
@@ -173,26 +181,43 @@ const cells = [];
 let index = 0;
 
 for (let x = 0; x < cols; x++) {
+
   const days = weeks[x]?.contributionDays || [];
 
   for (let y = 0; y < rows; y++) {
-    const count = days[y]?.contributionCount || 0;
+
+    const count =
+      days[y]?.contributionCount || 0;
 
     const px = left + x * step;
     const py = top + y * step;
 
     if (count === 0) {
+
       cells.push(
         `<rect x="${px}" y="${py}" width="${cell}" height="${cell}" rx="2.5" fill="#161b22" stroke="#30363d" stroke-width=".4"/>`
       );
+
       continue;
     }
 
     const t = times[index];
 
-    const before = Math.max(
+    /*
+      Keep the cell visible until the dragon reaches it.
+
+      A tiny delay after arrival makes sure the dragon
+      visibly visits the cell before it disappears.
+    */
+
+    const hideStart = Math.min(
+      0.99999,
+      t + 0.012
+    );
+
+    const fadeStart = Math.max(
       0,
-      t - 0.002
+      hideStart - 0.006
     );
 
     const color = getColor(count);
@@ -208,8 +233,8 @@ rx="2.5"
 fill="${color}">
 <animate
 attributeName="opacity"
-values="1;1;0;0;1"
-keyTimes="0;${before.toFixed(5)};${t.toFixed(5)};0.99999;1"
+values="1;1;1;0;0;1"
+keyTimes="0;${t.toFixed(5)};${fadeStart.toFixed(5)};${hideStart.toFixed(5)};0.99999;1"
 dur="${animationDuration}s"
 repeatCount="indefinite"/>
 </rect>`);
@@ -230,10 +255,12 @@ if (contributions.length > 0) {
   /*
     Start slightly outside the graph.
   */
+
   flightPoints.push({
     x: left - 38,
     y: contributions[0].y
   });
+
 
   for (let i = 0; i < contributions.length; i++) {
 
@@ -243,6 +270,7 @@ if (contributions.length > 0) {
       Very small wave.
       Dragon itself never rotates.
     */
+
     const wave =
       Math.sin(i * 0.7) * 2.5;
 
@@ -252,9 +280,11 @@ if (contributions.length > 0) {
     });
   }
 
+
   /*
     Finish outside the graph.
   */
+
   const last =
     contributions[contributions.length - 1];
 
@@ -288,12 +318,16 @@ const flightValues = flightPoints
 
 const flightKeyTimes = flightPoints
   .map((_, i) => {
-    if (flightPoints.length <= 1) return "0";
+
+    if (flightPoints.length <= 1) {
+      return "0";
+    }
 
     return (
       i /
       (flightPoints.length - 1)
     ).toFixed(5);
+
   })
   .join(";");
 
@@ -309,6 +343,7 @@ if (contributions.length > 0) {
   /*
     First color.
   */
+
   dragonColors.push(
     contributions[0].color
   );
@@ -320,6 +355,7 @@ if (contributions.length > 0) {
   /*
     Final color.
   */
+
   dragonColors.push(
     contributions[
       contributions.length - 1
@@ -361,7 +397,7 @@ const dragon = `
 
   <g
     id="dragon-art"
-    transform="scale(.62)"
+    transform="scale(.85)"
     color="#39d353"
   >
 
@@ -402,6 +438,7 @@ const dragon = `
     <!-- upper wing -->
 
     <g>
+
       <path
         d="M-1 -2 C-6 -11 -15 -17 -24 -13 C-20 -8 -13 -3 -5 2 Z"
         fill="currentColor"
@@ -416,11 +453,14 @@ const dragon = `
         dur=".75s"
         repeatCount="indefinite"
       />
+
     </g>
+
 
     <!-- lower wing -->
 
     <g>
+
       <path
         d="M-2 2 C-7 10 -16 15 -24 11 C-18 7 -12 3 -5 -2 Z"
         fill="currentColor"
@@ -435,7 +475,9 @@ const dragon = `
         dur=".75s"
         repeatCount="indefinite"
       />
+
     </g>
+
 
     <!-- neck -->
 
@@ -443,6 +485,7 @@ const dragon = `
       d="M6 -1 C9 -3 12 -3 15 -1 L15 2 C12 3 9 2 6 1 Z"
       fill="currentColor"
     />
+
 
     <!-- head -->
 
@@ -453,12 +496,14 @@ const dragon = `
       stroke-width=".8"
     />
 
+
     <!-- snout -->
 
     <path
       d="M19 -2 L29 0 L19 2 Z"
       fill="currentColor"
     />
+
 
     <!-- horns -->
 
@@ -471,6 +516,7 @@ const dragon = `
       d="M9 -2 L6 -7 L13 -3 Z"
       fill="#26a641"
     />
+
 
     <!-- eye -->
 
@@ -487,6 +533,7 @@ const dragon = `
       r=".4"
       fill="#0d1117"
     />
+
 
     <!-- legs -->
 
@@ -506,6 +553,7 @@ const dragon = `
       stroke-linecap="round"
     />
 
+
     <!-- color follows contribution -->
 
     <animate
@@ -518,6 +566,7 @@ const dragon = `
 
   </g>
 
+
   <!-- rigid whole-dragon movement -->
 
   <animateMotion
@@ -526,7 +575,9 @@ const dragon = `
     calcMode="paced"
     rotate="0"
   >
+
     <mpath href="#flightPath"/>
+
   </animateMotion>
 
 </g>
@@ -572,6 +623,7 @@ aria-label="Dragon Contribution Graph">
 
 </defs>
 
+
 <rect
 width="100%"
 height="100%"
@@ -579,9 +631,12 @@ rx="8"
 fill="#0d1117"
 />
 
+
 ${cells.join("")}
 
+
 ${dragon}
+
 
 </svg>
 `;
@@ -600,6 +655,7 @@ fs.writeFileSync(
   svg,
   "utf8"
 );
+
 
 console.log(
   `🐉 Dragon generated successfully: ${contributions.length} contributions`
