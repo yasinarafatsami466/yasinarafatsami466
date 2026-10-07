@@ -83,10 +83,40 @@ const height =
 
 
 /* =========================================================
+   CONTRIBUTION COLORS
+========================================================= */
+
+function getContributionColor(count) {
+
+  if (count >= 15) {
+    return '#39d353';
+  }
+
+  if (count >= 8) {
+    return '#26a641';
+  }
+
+  if (count >= 3) {
+    return '#006d32';
+  }
+
+  return '#0e4429';
+}
+
+
+/* =========================================================
    CONTRIBUTION CELLS
 ========================================================= */
 
 const cells = [];
+
+/*
+   Store every contribution position.
+
+   Dragon will visit these positions one by one.
+*/
+
+const contributionPoints = [];
 
 for (let x = 0; x < cols; x++) {
 
@@ -105,9 +135,9 @@ for (let x = 0; x < cols; x++) {
       days[y]?.contributionCount || 0;
 
 
-    /* -----------------------------------------------------
+    /* =====================================================
        EMPTY CELL
-    ----------------------------------------------------- */
+    ===================================================== */
 
     if (count === 0) {
 
@@ -128,112 +158,243 @@ for (let x = 0; x < cols; x++) {
     }
 
 
-    /* -----------------------------------------------------
-       CONTRIBUTION COLOR LEVELS
-    ----------------------------------------------------- */
+    /* =====================================================
+       CONTRIBUTION CELL
+    ===================================================== */
 
-    let fill;
+    const contributionColor =
+      getContributionColor(count);
 
-    if (count >= 15) {
-      fill = '#39d353';
-    } else if (count >= 8) {
-      fill = '#26a641';
-    } else if (count >= 3) {
-      fill = '#006d32';
-    } else {
-      fill = '#0e4429';
-    }
+    const index =
+      contributionPoints.length;
 
+    contributionPoints.push({
+      x: px + cell / 2,
+      y: py + cell / 2,
+      count,
+      color: contributionColor
+    });
 
     cells.push(`
-      <rect
-        x="${px}"
-        y="${py}"
-        width="${cell}"
-        height="${cell}"
-        rx="2.5"
-        fill="${fill}"
-      />
+      <g id="contribution-${index}">
+
+        <rect
+          x="${px}"
+          y="${py}"
+          width="${cell}"
+          height="${cell}"
+          rx="2.5"
+          fill="${contributionColor}"
+        />
+
+      </g>
     `);
   }
 }
 
 
 /* =========================================================
-   DRAGON FLIGHT
+   DRAGON PATH
 ========================================================= */
 
 /*
-   Dragon moves across the COMPLETE graph.
-
-   Instead of a straight line, the dragon follows
-   a gentle wave path.
+   If there are no contributions,
+   dragon uses a simple path.
 */
 
-const startX = left - 55;
-const endX = left + cols * step + 55;
+let dragonPoints = contributionPoints;
 
-const centerY =
-  top + (rows * step) / 2;
+if (dragonPoints.length === 0) {
 
-
-/*
-   Faster animation.
-*/
-
-const duration = 9;
-
-
-/*
-   Different points of the flight.
-*/
-
-const p1x = startX;
-const p2x = startX + (endX - startX) * 0.14;
-const p3x = startX + (endX - startX) * 0.28;
-const p4x = startX + (endX - startX) * 0.42;
-const p5x = startX + (endX - startX) * 0.56;
-const p6x = startX + (endX - startX) * 0.70;
-const p7x = startX + (endX - startX) * 0.84;
-const p8x = endX;
-
-
-/*
-   Vertical wave.
-
-   This makes the dragon move around
-   the contribution graph instead of
-   staying on one straight line.
-*/
-
-const y1 = centerY;
-const y2 = centerY - 10;
-const y3 = centerY + 7;
-const y4 = centerY - 12;
-const y5 = centerY + 10;
-const y6 = centerY - 6;
-const y7 = centerY + 8;
-const y8 = centerY;
+  dragonPoints = [
+    {
+      x: left,
+      y: top + (rows * step) / 2,
+      color: '#39d353'
+    },
+    {
+      x: left + cols * step,
+      y: top + (rows * step) / 2,
+      color: '#39d353'
+    }
+  ];
+}
 
 
 /* =========================================================
-   DRAGON
+   ADD ENTRY + EXIT POINTS
+========================================================= */
+
+const startPoint = {
+  x: left - 60,
+  y: dragonPoints[0].y,
+  color: dragonPoints[0].color
+};
+
+const endPoint = {
+  x: left + cols * step + 60,
+  y: dragonPoints[dragonPoints.length - 1].y,
+  color: dragonPoints[dragonPoints.length - 1].color
+};
+
+
+/*
+   Actual animation points.
+*/
+
+const flightPoints = [
+  startPoint,
+  ...dragonPoints,
+  endPoint
+];
+
+
+/* =========================================================
+   FLIGHT TIMING
+========================================================= */
+
+/*
+   Faster overall animation.
+
+   More contributions = slightly longer,
+   but never extremely slow.
+*/
+
+const visitCount =
+  contributionPoints.length;
+
+const duration =
+  Math.max(
+    7,
+    Math.min(
+      18,
+      visitCount * 0.045
+    )
+  );
+
+
+/* =========================================================
+   BUILD TRANSLATE VALUES
+========================================================= */
+
+const translateValues =
+  flightPoints
+    .map(point =>
+      `${point.x} ${point.y}`
+    )
+    .join(';\n      ');
+
+
+/* =========================================================
+   KEY TIMES
+========================================================= */
+
+const totalPoints =
+  flightPoints.length;
+
+const keyTimes =
+  flightPoints
+    .map((_, index) => {
+
+      const value =
+        index / (totalPoints - 1);
+
+      return value.toFixed(4);
+
+    })
+    .join(';\n      ');
+
+
+/* =========================================================
+   DRAGON COLOR ANIMATION
+========================================================= */
+
+/*
+   Dragon changes color according to
+   the contribution it is visiting.
+*/
+
+const colorValues =
+  flightPoints
+    .map(point => point.color)
+    .join(';\n      ');
+
+
+/* =========================================================
+   DRAGON SIZE
+========================================================= */
+
+const dragonScale = 0.72;
+
+
+/* =========================================================
+   CONTRIBUTION DISAPPEAR ANIMATIONS
+========================================================= */
+
+/*
+   Each contribution disappears when
+   the dragon reaches it.
+
+   The timing is synchronized with
+   the dragon's position.
+*/
+
+const disappearAnimations = [];
+
+for (
+  let i = 0;
+  i < contributionPoints.length;
+  i++
+) {
+
+  /*
+     Dragon starts at index 0.
+
+     Contribution i is at flightPoints[i + 1]
+     because startPoint is index 0.
+  */
+
+  const normalizedTime =
+    (i + 1) / (totalPoints - 1);
+
+  const beginTime =
+    duration * normalizedTime;
+
+  const disappearDuration =
+    0.16;
+
+  disappearAnimations.push(`
+    <animate
+      attributeName="opacity"
+      values="1;1;0"
+      keyTimes="0;0.35;1"
+      dur="${disappearDuration}s"
+      begin="${beginTime.toFixed(3)}s"
+      fill="freeze"
+    />
+  `);
+}
+
+
+/* =========================================================
+   DRAGON SVG
 ========================================================= */
 
 const dragon = `
-<g id="dragon">
+<g
+  id="dragon"
+  transform="scale(${dragonScale})"
+>
 
   <!-- =====================================================
-       WHOLE DRAGON POSITION
-       Only the whole dragon moves.
-       Body NEVER rotates.
+       DRAGON SHAPE
   ====================================================== -->
 
-  <g id="dragon-body">
+  <g id="dragon-shape">
 
-    <!-- =================================================
+    <!-- ===================================================
          TAIL
-    ================================================== -->
+    ==================================================== -->
 
     <path
       d="
@@ -242,7 +403,7 @@ const dragon = `
         C -35 -1, -41 -4, -47 0
       "
       fill="none"
-      stroke="#8b949e"
+      stroke="#39d353"
       stroke-width="3"
       stroke-linecap="round"
     />
@@ -256,22 +417,22 @@ const dragon = `
         L -42 3
         Z
       "
-      fill="#6e7681"
+      fill="#39d353"
     />
 
 
-    <!-- =================================================
+    <!-- ===================================================
          BODY
-    ================================================== -->
+    ==================================================== -->
 
     <ellipse
       cx="0"
       cy="0"
       rx="9"
       ry="5"
-      fill="#21262d"
-      stroke="#8b949e"
-      stroke-width="0.8"
+      fill="#39d353"
+      stroke="#0e4429"
+      stroke-width="0.9"
     />
 
     <ellipse
@@ -279,14 +440,14 @@ const dragon = `
       cy="-1"
       rx="5"
       ry="1.7"
-      fill="#8b949e"
-      opacity="0.45"
+      fill="#ffffff"
+      opacity="0.22"
     />
 
 
-    <!-- =================================================
+    <!-- ===================================================
          BACK SPIKES
-    ================================================== -->
+    ==================================================== -->
 
     <path
       d="
@@ -299,13 +460,13 @@ const dragon = `
         L 10 -2
         Z
       "
-      fill="#30363d"
+      fill="#39d353"
     />
 
 
-    <!-- =================================================
+    <!-- ===================================================
          TOP WING
-    ================================================== -->
+    ==================================================== -->
 
     <g id="top-wing">
 
@@ -316,12 +477,11 @@ const dragon = `
           C -20 -8, -13 -3, -5 2
           Z
         "
-        fill="#30363d"
-        stroke="#8b949e"
+        fill="#39d353"
+        stroke="#0e4429"
         stroke-width="0.8"
       />
 
-      <!-- Wing flap ONLY -->
       <animateTransform
         attributeName="transform"
         type="rotate"
@@ -339,9 +499,9 @@ const dragon = `
     </g>
 
 
-    <!-- =================================================
+    <!-- ===================================================
          BOTTOM WING
-    ================================================== -->
+    ==================================================== -->
 
     <g id="bottom-wing">
 
@@ -352,8 +512,8 @@ const dragon = `
           C -18 7, -12 3, -5 -2
           Z
         "
-        fill="#30363d"
-        stroke="#8b949e"
+        fill="#39d353"
+        stroke="#0e4429"
         stroke-width="0.8"
       />
 
@@ -374,9 +534,9 @@ const dragon = `
     </g>
 
 
-    <!-- =================================================
+    <!-- ===================================================
          NECK
-    ================================================== -->
+    ==================================================== -->
 
     <path
       d="
@@ -386,13 +546,13 @@ const dragon = `
         C 11 3, 8 2, 6 1
         Z
       "
-      fill="#21262d"
+      fill="#39d353"
     />
 
 
-    <!-- =================================================
+    <!-- ===================================================
          HEAD
-    ================================================== -->
+    ==================================================== -->
 
     <path
       d="
@@ -401,15 +561,15 @@ const dragon = `
         C 18 4, 12 4, 8 0
         Z
       "
-      fill="#21262d"
-      stroke="#8b949e"
+      fill="#39d353"
+      stroke="#0e4429"
       stroke-width="0.8"
     />
 
 
-    <!-- =================================================
+    <!-- ===================================================
          SNOUT
-    ================================================== -->
+    ==================================================== -->
 
     <path
       d="
@@ -418,13 +578,13 @@ const dragon = `
         L 18 2
         Z
       "
-      fill="#21262d"
+      fill="#39d353"
     />
 
 
-    <!-- =================================================
+    <!-- ===================================================
          HORNS
-    ================================================== -->
+    ==================================================== -->
 
     <path
       d="
@@ -433,7 +593,7 @@ const dragon = `
         L 16 -3
         Z
       "
-      fill="#6e7681"
+      fill="#26a641"
     />
 
     <path
@@ -443,13 +603,13 @@ const dragon = `
         L 12 -3
         Z
       "
-      fill="#6e7681"
+      fill="#26a641"
     />
 
 
-    <!-- =================================================
+    <!-- ===================================================
          EYE
-    ================================================== -->
+    ==================================================== -->
 
     <circle
       cx="19"
@@ -462,13 +622,13 @@ const dragon = `
       cx="19.3"
       cy="-1.2"
       r="0.4"
-      fill="#161b22"
+      fill="#0d1117"
     />
 
 
-    <!-- =================================================
+    <!-- ===================================================
          FRONT LEG
-    ================================================== -->
+    ==================================================== -->
 
     <path
       d="
@@ -477,15 +637,15 @@ const dragon = `
         L 12 8
       "
       fill="none"
-      stroke="#8b949e"
+      stroke="#39d353"
       stroke-width="1.4"
       stroke-linecap="round"
     />
 
 
-    <!-- =================================================
+    <!-- ===================================================
          BACK LEG
-    ================================================== -->
+    ==================================================== -->
 
     <path
       d="
@@ -494,21 +654,29 @@ const dragon = `
         L -10 8
       "
       fill="none"
-      stroke="#8b949e"
+      stroke="#39d353"
       stroke-width="1.4"
       stroke-linecap="round"
+    />
+
+
+    <!-- ===================================================
+         COLOR CHANGE
+    ==================================================== */
+
+    <animate
+      attributeName="fill"
+      values="${colorValues}"
+      keyTimes="${keyTimes}"
+      dur="${duration}s"
+      repeatCount="indefinite"
     />
 
   </g>
 
 
   <!-- =====================================================
-       FLIGHT ANIMATION
-
-       The whole dragon translates.
-       It does NOT rotate.
-
-       This prevents body deformation.
+       DRAGON MOVEMENT
   ====================================================== -->
 
   <animateTransform
@@ -516,46 +684,154 @@ const dragon = `
     type="translate"
 
     values="
-      ${p1x} ${y1};
-      ${p2x} ${y2};
-      ${p3x} ${y3};
-      ${p4x} ${y4};
-      ${p5x} ${y5};
-      ${p6x} ${y6};
-      ${p7x} ${y7};
-      ${p8x} ${y8}
+      ${translateValues}
+    "
+
+    keyTimes="
+      ${keyTimes}
     "
 
     dur="${duration}s"
 
     repeatCount="indefinite"
 
-    calcMode="spline"
-
-    keyTimes="
-      0;
-      0.14;
-      0.28;
-      0.42;
-      0.56;
-      0.70;
-      0.84;
-      1
-    "
-
-    keySplines="
-      0.42 0 0.58 1;
-      0.42 0 0.58 1;
-      0.42 0 0.58 1;
-      0.42 0 0.58 1;
-      0.42 0 0.58 1;
-      0.42 0 0.58 1;
-      0.42 0 0.58 1
-    "
+    calcMode="linear"
   />
 
 </g>
 `;
+
+
+/* =========================================================
+   IMPORTANT:
+   Apply color animation to every dragon component
+========================================================= */
+
+const colorAnimation = `
+  <animate
+    attributeName="fill"
+    values="${colorValues}"
+    keyTimes="${keyTimes}"
+    dur="${duration}s"
+    repeatCount="indefinite"
+  />
+`;
+
+
+/*
+   Add color animations separately to the
+   major dragon parts so the whole dragon
+   changes color.
+*/
+
+const finalDragon = dragon.replace(
+  '</g>\n\n\n  <!-- =====================================================\n       DRAGON MOVEMENT',
+  `${colorAnimation}
+  </g>
+
+
+  <!-- =====================================================
+       DRAGON MOVEMENT`
+);
+
+
+/* =========================================================
+   ADD DISAPPEAR ANIMATION TO CONTRIBUTIONS
+========================================================= */
+
+let finalCells = '';
+
+for (
+  let i = 0;
+  i < cells.length;
+  i++
+) {
+  finalCells += cells[i] + '\n';
+}
+
+
+/*
+   Instead of trying to guess the cell indexes
+   from the complete cells array, create the
+   animated contribution cells again.
+*/
+
+const animatedCells = [];
+
+let contributionIndex = 0;
+
+for (let x = 0; x < cols; x++) {
+
+  const days =
+    weeks[x]?.contributionDays || [];
+
+  for (let y = 0; y < rows; y++) {
+
+    const px =
+      left + x * step;
+
+    const py =
+      top + y * step;
+
+    const count =
+      days[y]?.contributionCount || 0;
+
+    if (count === 0) {
+
+      animatedCells.push(`
+        <rect
+          x="${px}"
+          y="${py}"
+          width="${cell}"
+          height="${cell}"
+          rx="2.5"
+          fill="#161b22"
+          stroke="#30363d"
+          stroke-width="0.4"
+        />
+      `);
+
+      continue;
+    }
+
+    const contributionColor =
+      getContributionColor(count);
+
+    const normalizedTime =
+      (contributionIndex + 1) /
+      (totalPoints - 1);
+
+    const beginTime =
+      duration * normalizedTime;
+
+    animatedCells.push(`
+      <g>
+
+        <rect
+          x="${px}"
+          y="${py}"
+          width="${cell}"
+          height="${cell}"
+          rx="2.5"
+          fill="${contributionColor}"
+        />
+
+        <animate
+          attributeName="opacity"
+          values="1;1;0"
+          keyTimes="0;0.30;1"
+          dur="0.16s"
+          begin="${beginTime.toFixed(3)}s"
+          repeatCount="indefinite"
+          fill="freeze"
+        />
+
+      </g>
+    `);
+
+    contributionIndex++;
+  }
+}
 
 
 /* =========================================================
@@ -577,9 +853,14 @@ const svg = `<?xml version="1.0" encoding="UTF-8"?>
     fill="#0d1117"
   />
 
-  ${cells.join('\n')}
+  <!-- CONTRIBUTION GRAPH -->
 
-  ${dragon}
+  ${animatedCells.join('\n')}
+
+
+  <!-- DRAGON -->
+
+  ${finalDragon}
 
 </svg>`;
 
@@ -599,5 +880,5 @@ fs.writeFileSync(
 );
 
 console.log(
-  `🐉 Dragon SVG generated successfully (${cols} weeks)`
+  `🐉 Dragon generated successfully — ${contributionPoints.length} contributions`
 );
