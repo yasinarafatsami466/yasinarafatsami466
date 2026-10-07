@@ -22,7 +22,7 @@ query($login:String!) {
   }
 }`;
 
-const res = await fetch('https://api.github.com/graphql', {
+const response = await fetch('https://api.github.com/graphql', {
   method: 'POST',
   headers: {
     Authorization: `bearer ${token}`,
@@ -37,15 +37,15 @@ const res = await fetch('https://api.github.com/graphql', {
   })
 });
 
-if (!res.ok) {
-  throw new Error(`GitHub API error: ${res.status}`);
+if (!response.ok) {
+  throw new Error(`GitHub API error: ${response.status}`);
 }
 
-const json = await res.json();
+const json = await response.json();
 
 if (json.errors) {
   throw new Error(
-    json.errors.map(e => e.message).join('; ')
+    json.errors.map(error => error.message).join('; ')
   );
 }
 
@@ -59,7 +59,7 @@ if (!weeks?.length) {
 
 
 /* =========================================================
-   GRAPH SETTINGS
+   GRAPH
 ========================================================= */
 
 const rows = 7;
@@ -71,124 +71,92 @@ const step = cell + gap;
 
 const left = 34;
 const top = 30;
+const right = 35;
+const bottom = 30;
 
-const right = 34;
-const bottom = 34;
-
-const width =
-  left + cols * step + right;
-
-const height =
-  top + rows * step + bottom;
+const width = left + cols * step + right;
+const height = top + rows * step + bottom;
 
 
 /* =========================================================
-   CONTRIBUTION COLORS
+   COLORS
 ========================================================= */
 
-function getContributionColor(count) {
-
-  if (count >= 15) {
-    return '#39d353';
-  }
-
-  if (count >= 8) {
-    return '#26a641';
-  }
-
-  if (count >= 3) {
-    return '#006d32';
-  }
-
+function contributionColor(count) {
+  if (count >= 15) return '#39d353';
+  if (count >= 8) return '#26a641';
+  if (count >= 3) return '#006d32';
   return '#0e4429';
 }
 
 
 /* =========================================================
-   CONTRIBUTION CELLS
+   COLLECT CONTRIBUTIONS
 ========================================================= */
 
-const cells = [];
-
-/*
-   Store every contribution position.
-
-   Dragon will visit these positions one by one.
-*/
-
-const contributionPoints = [];
+const contributions = [];
 
 for (let x = 0; x < cols; x++) {
-
-  const days =
-    weeks[x]?.contributionDays || [];
+  const days = weeks[x]?.contributionDays || [];
 
   for (let y = 0; y < rows; y++) {
+    const count = days[y]?.contributionCount || 0;
 
-    const px =
-      left + x * step;
+    const px = left + x * step;
+    const py = top + y * step;
 
-    const py =
-      top + y * step;
+    if (count > 0) {
+      contributions.push({
+        x: px + cell / 2,
+        y: py + cell / 2,
+        count,
+        color: contributionColor(count)
+      });
+    }
+  }
+}
 
-    const count =
-      days[y]?.contributionCount || 0;
 
+/* =========================================================
+   CELLS
+========================================================= */
 
-    /* =====================================================
-       EMPTY CELL
-    ===================================================== */
+const cellSvg = [];
+
+let contributionIndex = 0;
+
+for (let x = 0; x < cols; x++) {
+  const days = weeks[x]?.contributionDays || [];
+
+  for (let y = 0; y < rows; y++) {
+    const count = days[y]?.contributionCount || 0;
+
+    const px = left + x * step;
+    const py = top + y * step;
 
     if (count === 0) {
+      cellSvg.push(`
+<rect x="${px}" y="${py}" width="${cell}" height="${cell}"
+rx="2.5" fill="#161b22" stroke="#30363d" stroke-width="0.4"/>`);
+    } else {
+      const c = contributionColor(count);
 
-      cells.push(`
-        <rect
-          x="${px}"
-          y="${py}"
-          width="${cell}"
-          height="${cell}"
-          rx="2.5"
-          fill="#161b22"
-          stroke="#30363d"
-          stroke-width="0.4"
-        />
-      `);
+      cellSvg.push(`
+<rect id="c${contributionIndex}"
+x="${px}" y="${py}"
+width="${cell}" height="${cell}"
+rx="2.5" fill="${c}">
+<animate
+attributeName="opacity"
+values="1;1;0;0;1"
+keyTimes="0;0.02;0.04;0.98;1"
+dur="${Math.max(7, contributions.length * 0.055)}s"
+begin="${(contributionIndex * 0.055).toFixed(3)}s"
+repeatCount="indefinite"/>
+</rect>`);
 
-      continue;
+      contributionIndex++;
     }
-
-
-    /* =====================================================
-       CONTRIBUTION CELL
-    ===================================================== */
-
-    const contributionColor =
-      getContributionColor(count);
-
-    const index =
-      contributionPoints.length;
-
-    contributionPoints.push({
-      x: px + cell / 2,
-      y: py + cell / 2,
-      count,
-      color: contributionColor
-    });
-
-    cells.push(`
-      <g id="contribution-${index}">
-
-        <rect
-          x="${px}"
-          y="${py}"
-          width="${cell}"
-          height="${cell}"
-          rx="2.5"
-          fill="${contributionColor}"
-        />
-
-      </g>
-    `);
   }
 }
 
@@ -197,211 +165,113 @@ for (let x = 0; x < cols; x++) {
    DRAGON PATH
 ========================================================= */
 
-/*
-   If there are no contributions,
-   dragon uses a simple path.
-*/
+const points = [];
 
-let dragonPoints = contributionPoints;
+if (contributions.length > 0) {
+  points.push({
+    x: left - 45,
+    y: contributions[0].y
+  });
 
-if (dragonPoints.length === 0) {
+  for (let i = 0; i < contributions.length; i++) {
+    const p = contributions[i];
 
-  dragonPoints = [
+    /*
+      Small vertical offset makes the flight
+      feel alive without rotating the dragon.
+    */
+    const wave =
+      Math.sin(i * 0.9) * 5;
+
+    points.push({
+      x: p.x,
+      y: p.y + wave
+    });
+  }
+
+  points.push({
+    x: left + cols * step + 45,
+    y: contributions[contributions.length - 1].y
+  });
+} else {
+  points.push(
     {
-      x: left,
-      y: top + (rows * step) / 2,
-      color: '#39d353'
+      x: left - 45,
+      y: top + 42
     },
     {
-      x: left + cols * step,
-      y: top + (rows * step) / 2,
-      color: '#39d353'
+      x: left + cols * step + 45,
+      y: top + 42
     }
-  ];
+  );
 }
 
 
 /* =========================================================
-   ADD ENTRY + EXIT POINTS
+   ANIMATION VALUES
 ========================================================= */
 
-const startPoint = {
-  x: left - 60,
-  y: dragonPoints[0].y,
-  color: dragonPoints[0].color
-};
+const total = points.length;
 
-const endPoint = {
-  x: left + cols * step + 60,
-  y: dragonPoints[dragonPoints.length - 1].y,
-  color: dragonPoints[dragonPoints.length - 1].color
-};
+const values = points
+  .map(p => `${p.x} ${p.y}`)
+  .join(';');
 
+const keyTimes = points
+  .map((_, i) =>
+    (i / (total - 1)).toFixed(4)
+  )
+  .join(';');
 
-/*
-   Actual animation points.
-*/
-
-const flightPoints = [
-  startPoint,
-  ...dragonPoints,
-  endPoint
-];
-
-
-/* =========================================================
-   FLIGHT TIMING
-========================================================= */
-
-/*
-   Faster overall animation.
-
-   More contributions = slightly longer,
-   but never extremely slow.
-*/
-
-const visitCount =
-  contributionPoints.length;
-
-const duration =
+const animationDuration =
   Math.max(
     7,
     Math.min(
       18,
-      visitCount * 0.045
+      contributions.length * 0.055
     )
   );
 
 
 /* =========================================================
-   BUILD TRANSLATE VALUES
+   DRAGON COLORS
 ========================================================= */
 
-const translateValues =
-  flightPoints
-    .map(point =>
-      `${point.x} ${point.y}`
-    )
-    .join(';\n      ');
+const dragonColors = [];
 
+for (let i = 0; i < points.length; i++) {
 
-/* =========================================================
-   KEY TIMES
-========================================================= */
-
-const totalPoints =
-  flightPoints.length;
-
-const keyTimes =
-  flightPoints
-    .map((_, index) => {
-
-      const value =
-        index / (totalPoints - 1);
-
-      return value.toFixed(4);
-
-    })
-    .join(';\n      ');
-
-
-/* =========================================================
-   DRAGON COLOR ANIMATION
-========================================================= */
-
-/*
-   Dragon changes color according to
-   the contribution it is visiting.
-*/
-
-const colorValues =
-  flightPoints
-    .map(point => point.color)
-    .join(';\n      ');
-
-
-/* =========================================================
-   DRAGON SIZE
-========================================================= */
-
-const dragonScale = 0.72;
-
-
-/* =========================================================
-   CONTRIBUTION DISAPPEAR ANIMATIONS
-========================================================= */
-
-/*
-   Each contribution disappears when
-   the dragon reaches it.
-
-   The timing is synchronized with
-   the dragon's position.
-*/
-
-const disappearAnimations = [];
-
-for (
-  let i = 0;
-  i < contributionPoints.length;
-  i++
-) {
-
-  /*
-     Dragon starts at index 0.
-
-     Contribution i is at flightPoints[i + 1]
-     because startPoint is index 0.
-  */
-
-  const normalizedTime =
-    (i + 1) / (totalPoints - 1);
-
-  const beginTime =
-    duration * normalizedTime;
-
-  const disappearDuration =
-    0.16;
-
-  disappearAnimations.push(`
-    <animate
-      attributeName="opacity"
-      values="1;1;0"
-      keyTimes="0;0.35;1"
-      dur="${disappearDuration}s"
-      begin="${beginTime.toFixed(3)}s"
-      fill="freeze"
-    />
-  `);
+  if (
+    i > 0 &&
+    i <= contributions.length
+  ) {
+    dragonColors.push(
+      contributions[i - 1].color
+    );
+  } else {
+    dragonColors.push('#39d353');
+  }
 }
 
+const colorValues =
+  dragonColors.join(';');
+
 
 /* =========================================================
-   DRAGON SVG
+   DRAGON
 ========================================================= */
 
 const dragon = `
-<g
-  id="dragon"
-  transform="scale(${dragonScale})"
->
+<g id="dragon">
 
-  <!-- =====================================================
-       DRAGON SHAPE
-  ====================================================== -->
+  <g id="dragon-art">
 
-  <g id="dragon-shape">
-
-    <!-- ===================================================
-         TAIL
-    ==================================================== -->
+    <!-- TAIL -->
 
     <path
-      d="
-        M -7 0
-        C -14 1, -21 3, -28 1
-        C -35 -1, -41 -4, -47 0
-      "
+      d="M-7 0
+         C-14 1 -21 3 -28 1
+         C-35 -1 -41 -4 -47 0"
       fill="none"
       stroke="#39d353"
       stroke-width="3"
@@ -409,21 +279,12 @@ const dragon = `
     />
 
     <path
-      d="
-        M -42 0
-        L -51 -5
-        L -48 0
-        L -51 5
-        L -42 3
-        Z
-      "
+      d="M-42 0 L-51 -5 L-48 0 L-51 5 L-42 3 Z"
       fill="#39d353"
     />
 
 
-    <!-- ===================================================
-         BODY
-    ==================================================== -->
+    <!-- BODY -->
 
     <ellipse
       cx="0"
@@ -432,51 +293,40 @@ const dragon = `
       ry="5"
       fill="#39d353"
       stroke="#0e4429"
-      stroke-width="0.9"
+      stroke-width="0.8"
     />
 
     <ellipse
       cx="1"
       cy="-1"
       rx="5"
-      ry="1.7"
+      ry="1.6"
       fill="#ffffff"
-      opacity="0.22"
+      opacity="0.2"
     />
 
 
-    <!-- ===================================================
-         BACK SPIKES
-    ==================================================== -->
+    <!-- SPIKES -->
 
     <path
-      d="
-        M -5 -3
-        L -8 -8
-        L -1 -4
-        L 2 -9
-        L 5 -4
-        L 9 -7
-        L 10 -2
-        Z
-      "
+      d="M-5 -3
+         L-8 -8
+         L-1 -4
+         L2 -9
+         L5 -4
+         L9 -7
+         L10 -2 Z"
       fill="#39d353"
     />
 
 
-    <!-- ===================================================
-         TOP WING
-    ==================================================== -->
+    <!-- TOP WING -->
 
-    <g id="top-wing">
-
+    <g>
       <path
-        d="
-          M -1 -2
-          C -6 -11, -15 -17, -24 -13
-          C -20 -8, -13 -3, -5 2
-          Z
-        "
+        d="M-1 -2
+           C-6 -11 -15 -17 -24 -13
+           C-20 -8 -13 -3 -5 2 Z"
         fill="#39d353"
         stroke="#0e4429"
         stroke-width="0.8"
@@ -485,33 +335,20 @@ const dragon = `
       <animateTransform
         attributeName="transform"
         type="rotate"
-        values="
-          0 -2 0;
-          -18 -2 0;
-          0 -2 0;
-          14 -2 0;
-          0 -2 0
-        "
-        dur="0.75s"
+        values="0 -2 0;-16 -2 0;0 -2 0;12 -2 0;0 -2 0"
+        dur="0.7s"
         repeatCount="indefinite"
       />
-
     </g>
 
 
-    <!-- ===================================================
-         BOTTOM WING
-    ==================================================== -->
+    <!-- BOTTOM WING -->
 
-    <g id="bottom-wing">
-
+    <g>
       <path
-        d="
-          M -2 2
-          C -7 10, -16 15, -24 11
-          C -18 7, -12 3, -5 -2
-          Z
-        "
+        d="M-2 2
+           C-7 10 -16 15 -24 11
+           C-18 7 -12 3 -5 -2 Z"
         fill="#39d353"
         stroke="#0e4429"
         stroke-width="0.8"
@@ -520,101 +357,63 @@ const dragon = `
       <animateTransform
         attributeName="transform"
         type="rotate"
-        values="
-          0 -2 2;
-          15 -2 2;
-          0 -2 2;
-          -12 -2 2;
-          0 -2 2
-        "
-        dur="0.75s"
+        values="0 -2 2;14 -2 2;0 -2 2;-11 -2 2;0 -2 2"
+        dur="0.7s"
         repeatCount="indefinite"
       />
-
     </g>
 
 
-    <!-- ===================================================
-         NECK
-    ==================================================== -->
+    <!-- NECK -->
 
     <path
-      d="
-        M 6 -1
-        C 9 -3, 12 -3, 14 -1
-        L 14 2
-        C 11 3, 8 2, 6 1
-        Z
-      "
+      d="M6 -1
+         C9 -3 12 -3 14 -1
+         L14 2
+         C11 3 8 2 6 1 Z"
       fill="#39d353"
     />
 
 
-    <!-- ===================================================
-         HEAD
-    ==================================================== -->
+    <!-- HEAD -->
 
     <path
-      d="
-        M 8 0
-        C 12 -4, 18 -4, 22 0
-        C 18 4, 12 4, 8 0
-        Z
-      "
+      d="M8 0
+         C12 -4 18 -4 22 0
+         C18 4 12 4 8 0 Z"
       fill="#39d353"
       stroke="#0e4429"
       stroke-width="0.8"
     />
 
 
-    <!-- ===================================================
-         SNOUT
-    ==================================================== -->
+    <!-- SNOUT -->
 
     <path
-      d="
-        M 18 -2
-        L 28 0
-        L 18 2
-        Z
-      "
+      d="M18 -2 L28 0 L18 2 Z"
       fill="#39d353"
     />
 
 
-    <!-- ===================================================
-         HORNS
-    ==================================================== -->
+    <!-- HORNS -->
 
     <path
-      d="
-        M 11 -3
-        L 12 -9
-        L 16 -3
-        Z
-      "
+      d="M11 -3 L12 -9 L16 -3 Z"
       fill="#26a641"
     />
 
     <path
-      d="
-        M 8 -2
-        L 5 -7
-        L 12 -3
-        Z
-      "
+      d="M8 -2 L5 -7 L12 -3 Z"
       fill="#26a641"
     />
 
 
-    <!-- ===================================================
-         EYE
-    ==================================================== -->
+    <!-- EYE -->
 
     <circle
       cx="19"
       cy="-1.2"
-      r="1.25"
+      r="1.2"
       fill="#f2cc60"
     />
 
@@ -626,16 +425,18 @@ const dragon = `
     />
 
 
-    <!-- ===================================================
-         FRONT LEG
-    ==================================================== -->
+    <!-- LEGS -->
 
     <path
-      d="
-        M 5 3
-        L 9 8
-        L 12 8
-      "
+      d="M5 3 L9 8 L12 8"
+      fill="none"
+      stroke="#39d353"
+      stroke-width="1.4"
+      stroke-linecap="round"
+    />
+
+    <path
+      d="M-4 3 L-7 8 L-10 8"
       fill="none"
       stroke="#39d353"
       stroke-width="1.4"
@@ -643,195 +444,33 @@ const dragon = `
     />
 
 
-    <!-- ===================================================
-         BACK LEG
-    ==================================================== -->
-
-    <path
-      d="
-        M -4 3
-        L -7 8
-        L -10 8
-      "
-      fill="none"
-      stroke="#39d353"
-      stroke-width="1.4"
-      stroke-linecap="round"
-    />
-
-
-    <!-- ===================================================
-         COLOR CHANGE
-    ==================================================== */
+    <!-- COLOR CHANGES -->
 
     <animate
       attributeName="fill"
       values="${colorValues}"
       keyTimes="${keyTimes}"
-      dur="${duration}s"
+      dur="${animationDuration}s"
       repeatCount="indefinite"
     />
 
   </g>
 
 
-  <!-- =====================================================
-       DRAGON MOVEMENT
-  ====================================================== -->
+  <!-- WHOLE DRAGON MOVEMENT -->
 
   <animateTransform
     attributeName="transform"
     type="translate"
-
-    values="
-      ${translateValues}
-    "
-
-    keyTimes="
-      ${keyTimes}
-    "
-
-    dur="${duration}s"
-
+    values="${values}"
+    keyTimes="${keyTimes}"
+    dur="${animationDuration}s"
     repeatCount="indefinite"
-
     calcMode="linear"
   />
 
 </g>
 `;
-
-
-/* =========================================================
-   IMPORTANT:
-   Apply color animation to every dragon component
-========================================================= */
-
-const colorAnimation = `
-  <animate
-    attributeName="fill"
-    values="${colorValues}"
-    keyTimes="${keyTimes}"
-    dur="${duration}s"
-    repeatCount="indefinite"
-  />
-`;
-
-
-/*
-   Add color animations separately to the
-   major dragon parts so the whole dragon
-   changes color.
-*/
-
-const finalDragon = dragon.replace(
-  '</g>\n\n\n  <!-- =====================================================\n       DRAGON MOVEMENT',
-  `${colorAnimation}
-  </g>
-
-
-  <!-- =====================================================
-       DRAGON MOVEMENT`
-);
-
-
-/* =========================================================
-   ADD DISAPPEAR ANIMATION TO CONTRIBUTIONS
-========================================================= */
-
-let finalCells = '';
-
-for (
-  let i = 0;
-  i < cells.length;
-  i++
-) {
-  finalCells += cells[i] + '\n';
-}
-
-
-/*
-   Instead of trying to guess the cell indexes
-   from the complete cells array, create the
-   animated contribution cells again.
-*/
-
-const animatedCells = [];
-
-let contributionIndex = 0;
-
-for (let x = 0; x < cols; x++) {
-
-  const days =
-    weeks[x]?.contributionDays || [];
-
-  for (let y = 0; y < rows; y++) {
-
-    const px =
-      left + x * step;
-
-    const py =
-      top + y * step;
-
-    const count =
-      days[y]?.contributionCount || 0;
-
-    if (count === 0) {
-
-      animatedCells.push(`
-        <rect
-          x="${px}"
-          y="${py}"
-          width="${cell}"
-          height="${cell}"
-          rx="2.5"
-          fill="#161b22"
-          stroke="#30363d"
-          stroke-width="0.4"
-        />
-      `);
-
-      continue;
-    }
-
-    const contributionColor =
-      getContributionColor(count);
-
-    const normalizedTime =
-      (contributionIndex + 1) /
-      (totalPoints - 1);
-
-    const beginTime =
-      duration * normalizedTime;
-
-    animatedCells.push(`
-      <g>
-
-        <rect
-          x="${px}"
-          y="${py}"
-          width="${cell}"
-          height="${cell}"
-          rx="2.5"
-          fill="${contributionColor}"
-        />
-
-        <animate
-          attributeName="opacity"
-          values="1;1;0"
-          keyTimes="0;0.30;1"
-          dur="0.16s"
-          begin="${beginTime.toFixed(3)}s"
-          repeatCount="indefinite"
-          fill="freeze"
-        />
-
-      </g>
-    `);
-
-    contributionIndex++;
-  }
-}
 
 
 /* =========================================================
@@ -841,32 +480,27 @@ for (let x = 0; x < cols; x++) {
 const svg = `<?xml version="1.0" encoding="UTF-8"?>
 
 <svg
-  xmlns="http://www.w3.org/2000/svg"
-  width="${width}"
-  height="${height}"
-  viewBox="0 0 ${width} ${height}"
->
+xmlns="http://www.w3.org/2000/svg"
+width="${width}"
+height="${height}"
+viewBox="0 0 ${width} ${height}"
+role="img"
+aria-label="Dragon contribution graph">
 
-  <rect
-    width="100%"
-    height="100%"
-    fill="#0d1117"
-  />
+<rect
+width="100%"
+height="100%"
+fill="#0d1117"/>
 
-  <!-- CONTRIBUTION GRAPH -->
+${cellSvg.join('')}
 
-  ${animatedCells.join('\n')}
-
-
-  <!-- DRAGON -->
-
-  ${finalDragon}
+${dragon}
 
 </svg>`;
 
 
 /* =========================================================
-   WRITE FILE
+   WRITE
 ========================================================= */
 
 fs.mkdirSync('dragon', {
@@ -880,5 +514,5 @@ fs.writeFileSync(
 );
 
 console.log(
-  `🐉 Dragon generated successfully — ${contributionPoints.length} contributions`
+  `🐉 Dragon SVG generated successfully (${contributions.length} contributions)`
 );
