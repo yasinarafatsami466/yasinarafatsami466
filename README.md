@@ -79,5 +79,9 @@ I use GitHub to keep track of my projects, practice programming, and share what 
 ## 🐉 My Contribution Journey
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/yasinarafatsami466/yasinarafatsami466/main/dragon/dragon.svg" width="100%" />
+  <img
+    src="https://raw.githubusercontent.com/yasinarafatsami466/yasinarafatsami466/main/dragon/dragon.svg"
+    width="100%"
+    alt="Dragon Contribution Graph"
+  />
 </p>
